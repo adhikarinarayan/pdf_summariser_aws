@@ -1,0 +1,48 @@
+# .github/workflows/deploy-infra.yml
+
+name: 'Deploy AWS Infrastructure'
+
+on:
+  push:
+    branches:
+      - main # This workflow runs every time you push to the main branch
+  workflow_dispatch: # Allows you to manually trigger the workflow too
+
+jobs:
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest # The job will run on a fresh Linux machine hosted by GitHub
+    
+    defaults:
+      run:
+        working-directory: ./terraform # All commands will run from the terraform directory
+
+    steps:
+      # Step 1: Checks out your repository code so the job can access it
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # Step 2: Configures the AWS credentials using the secrets we stored earlier
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1 # Must match the region in your terraform file
+
+      # Step 3: Sets up Terraform itself on the runner
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      # Step 4: Initializes Terraform. This downloads the necessary provider plugins.
+      - name: Terraform Init
+        run: terraform init
+
+      # Step 5: Generates a plan. Terraform figures out what needs to be created, updated, or destroyed.
+      - name: Terraform Plan
+        run: terraform plan -no-color
+
+      # Step 6: Applies the plan. This actually builds the resources in AWS.
+      # The '-auto-approve' flag tells Terraform to proceed without asking for manual confirmation.
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
